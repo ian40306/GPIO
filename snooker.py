@@ -34,18 +34,17 @@ num = {' ':(0,0,0,0,0,0,0),
     '8':(1,1,1,1,1,1,1),
     '9':(1,1,1,1,0,1,1)}
 import threading
-n='0000'
+score='0000'
 def segmentsrun(): 
-    GPIO.setmode(GPIO.BCM)
-
+    global score
     global segments
     global digits
-    global n
     global num
+
     while(1):
         for digit in range(4):
             for loop in range(0,7):
-                GPIO.output(segments[loop], num[n[digit]][loop])
+                GPIO.output(segments[loop], num[score[digit]][loop])
             if digit==1:
                 GPIO.output(24,1)
             else:
@@ -57,24 +56,131 @@ def segmentsrun():
 
 
 #震動感應器
-SW420_PIN = 5
+SW420_PIN1 = 5#29
+SW420_PIN2 = 6#31
+SW420_PIN3 = 13#33
+SW420_PIN4 = 19#35
+SW420_number=0
 def my_callback(channel):
-    global n
-    n='0111'
-    print('move')
-GPIO.setup(SW420_PIN, GPIO.IN)
-GPIO.add_event_detect(SW420_PIN, GPIO.RISING, callback=my_callback, bouncetime=250)
+    global SW420_number
+    if(channel==5):
+        SW420_number+=1
+        print("right move")
+    elif(channel==6):
+        SW420_number-=1
+        print("left move")
+    score_calculate()
+GPIO.setup(SW420_PIN1, GPIO.IN)
+GPIO.setup(SW420_PIN2, GPIO.IN)
+GPIO.add_event_detect(SW420_PIN1, GPIO.RISING, callback=my_callback, bouncetime=250)
+GPIO.add_event_detect(SW420_PIN2, GPIO.RISING, callback=my_callback, bouncetime=250)
+
+#計分
+step=0
+startside=0
+goback=0
+
+def score_calculate():
+    global score
+    global step
+    global startside
+    global SW420_number
+    global goback
+    if(step==0):
+        if(startside==0):
+            if(SW420_number<0):
+                startside=1
+                SW420_number=0
+                score=str(int(score)+100).zfill(4)  
+            else:
+                step+=1
+                goback=1
+        else:
+            if(SW420_number>0):
+                startside=0
+                SW420_number=0
+                score=str(int(score)+1).zfill(4)
+            else:
+                step+=1
+                goback=1
+        
+    elif(step==1):
+        if(startside==0):
+            if(SW420_number<0):
+                startside=1
+                SW420_number=0
+                score=str(int(score)+100).zfill(4)
+            else:
+                step+=1
+                goback=1
+        else:
+            if(SW420_number>0):
+                startside=0
+                SW420_number=0
+                score=str(int(score)+1).zfill(4)
+            else:
+                step+=1
+                goback=1
+    elif(step==2):
+        if(startside==0):
+            if(SW420_number>0):
+                startside=0
+                SW420_number=0
+                score=str(int(score)+1).zfill(4)
+            else:
+                step+=1
+                goback=1
+        else:
+            if(SW420_number<0):
+                startside=1
+                SW420_number=0
+                score=str(int(score)+100).zfill(4)
+            else:
+                step+=1
+                goback=1
+    else:
+        if(startside==0):
+            if(SW420_number<0):
+                startside=1
+                SW420_number=0
+                score=str(int(score)+100).zfill(4)
+            else:
+                step=2
+                goback=1
+        else:
+            if(SW420_number>0):
+                startside=0
+                SW420_number=0
+                score=str(int(score)+1).zfill(4)
+            else:
+                step=2
+                goback=1
 
 try:
+    global score
+    global startside
+    global goback
     starttime=time.time()
     t = threading.Thread(target =segmentsrun)        
     t.start()
     print(' Ctrl-C to stop')
     while(1):
-        b=0
+        time_pass=0
+        start_time=time.time()
+        while(1):
+            time_pass=time.time()-start_time
+            '''if(goback==1):
+                goback=0
+                break
+            elif(time_pass>=5):
+                if(startside==0):
+                    person[1]+=1
+                else:
+                    person[0]+=1
+                break'''
         #if(time.time()-starttime>=5):
         #    n='2020'   
-    
+        #score=str(person[0])+str(person[1])    
 except KeyboardInterrupt:
     print('close')
 #finally:
