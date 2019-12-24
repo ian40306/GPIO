@@ -52,7 +52,7 @@ def segmentsrun():
     global segments
     global digits
     global num
-
+    
     while(1):
         if GPIO.input(BUTTON_PIN) == GPIO.LOW:
             score='0000'
@@ -80,13 +80,15 @@ SW420_PIN4 = 19#35
 SW420_number=0
 def my_callback(channel):
     global SW420_number
+    global step_time
     if(channel==5):
         SW420_number=1
         print("right move")
     elif(channel==6):
         SW420_number=-1
         print("left move")
-    score_calculate()
+    if(step_time==0):
+        score_calculate()
 GPIO.setup(SW420_PIN1, GPIO.IN)
 GPIO.setup(SW420_PIN2, GPIO.IN)
 GPIO.add_event_detect(SW420_PIN1, GPIO.RISING, callback=my_callback, bouncetime=250)
@@ -97,7 +99,8 @@ step=0
 startside=0
 goback=0
 start_time=0
-
+step_over_time=0
+step_time=0
 def score_calculate():
     global score
     global step
@@ -105,23 +108,31 @@ def score_calculate():
     global SW420_number
     global goback
     global start_time
+    global step_over_time
+    global step_time
     if(step==0):
         if(startside==0):
+            #GPIO.output(LED_PIN_R,True)
             if(SW420_number<0):
                 startside=1
                 SW420_number=0
                 score=str(int(score)+100).zfill(4)  
                 step=0
+                step_over_time=time.time()
+                GPIO.output(LED_PIN_R,False)
             else:
                 step+=1
                 goback=1
                 start_time=time.time()
         else:
+            #GPIO.output(LED_PIN_L,True)
             if(SW420_number>0):
                 startside=0
                 SW420_number=0
                 score=str(int(score)+1).zfill(4)
                 step=0
+                step_over_time=time.time()
+                GPIO.output(LED_PIN_L,False)
             else:
                 step+=1
                 goback=1
@@ -134,6 +145,9 @@ def score_calculate():
                 SW420_number=0
                 score=str(int(score)+100).zfill(4)
                 step=0
+                step_over_time=time.time()
+                GPIO.output(LED_PIN_L,False)
+                GPIO.output(LED_PIN_R,False)
             else:
                 step+=1
                 goback=1
@@ -144,6 +158,9 @@ def score_calculate():
                 SW420_number=0
                 score=str(int(score)+1).zfill(4)
                 step=0
+                step_over_time=time.time()
+                GPIO.output(LED_PIN_L,False)
+                GPIO.output(LED_PIN_R,False)
             else:
                 step+=1
                 goback=1
@@ -155,6 +172,9 @@ def score_calculate():
                 SW420_number=0
                 score=str(int(score)+1).zfill(4)
                 step=0
+                step_over_time=time.time()
+                GPIO.output(LED_PIN_L,False)
+                GPIO.output(LED_PIN_R,False)
             else:
                 step+=1
                 goback=1
@@ -165,6 +185,9 @@ def score_calculate():
                 SW420_number=0
                 score=str(int(score)+100).zfill(4)
                 step=0
+                step_over_time=time.time()
+                GPIO.output(LED_PIN_L,False)
+                GPIO.output(LED_PIN_R,False)
             else:
                 step+=1
                 goback=1
@@ -176,6 +199,9 @@ def score_calculate():
                 SW420_number=0
                 score=str(int(score)+100).zfill(4)
                 step=0
+                step_over_time=time.time()
+                GPIO.output(LED_PIN_L,False)
+                GPIO.output(LED_PIN_R,False)
             else:
                 step=2
                 goback=1
@@ -186,6 +212,9 @@ def score_calculate():
                 SW420_number=0
                 score=str(int(score)+1).zfill(4)
                 step=0
+                step_over_time=time.time()
+                GPIO.output(LED_PIN_L,False)
+                GPIO.output(LED_PIN_R,False)
             else:
                 step=2
                 goback=1
@@ -196,15 +225,28 @@ try:
     global startside
     global goback
     global start_time
-    starttime=time.time()
+    global step_over_time
+    global step_time
+    start_time=time.time()
     t = threading.Thread(target =segmentsrun)        
     t.start()
+
     print(' Ctrl-C to stop')
     while(1):
         time_pass=0
         start_time=time.time()
+        step_pass=0
         while(1):
             time_pass=time.time()-start_time
+            step_pass=time.time()-step_over_time
+            if(step_pass>=5):
+                step_time=0
+                if(startside==0):
+                    GPIO.output(LED_PIN_R,True)
+                else:
+                    GPIO.output(LED_PIN_L,True)
+            else:
+                step_time=1
             if(goback==1 and time_pass>=5):
                 #print(start_time)
                 if(startside==0):
