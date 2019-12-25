@@ -1,4 +1,77 @@
 #!/usr/bin/env python
+####################################################################
+#                                                                  #
+#                           7 segments                             #
+#                                                                  #
+#                        3  5  7 11 13 15                          #
+#                        |  |  |  |  |  |                          #
+#              +------------------------------------+              #
+#              |         3  a  f  2  1  b           |              #
+#              |   *****   *****   *****   *****    |              #
+#              |   *   *   *   *   *   *   *   *    |              #
+#              |   *****   *****   *****   *****    |              #
+#              |   *   *   *   *   *   *   *   *    |              #
+#              |   ***** * ***** * ***** * ***** *  |              #
+#              |         e  d  h  c  g  0           |              #
+#              +------------------------------------+              #
+#                        |  |  |  |  |  |                          #
+#                       12 16 18 22 24 26                          #
+#                                                                  #
+#//////////////////////////////////////////////////////////////////#
+#                                                                  #
+#                          sw420_1                                 #
+#                          sw420_2                                 #
+#                          sw420_3                                 #
+#                          sw420_4                                 #
+#                                                                  #
+#                     +----------------+                           #
+#                     |  @@@@@@@@@@@@  |                           #
+#                     |                |                           #
+#                     |                |                           #
+#                     |                |                           #
+#                     |                |                           #
+#                     |       **       |                           #
+#                     |       **       |                           #
+#                     |   DO GND VCC   |                           #
+#                     +----------------+                           #
+#                          |   |   |                               #
+#                         29   9   2                               #
+#                         31   9   2                               #
+#                         33   9   2                               #
+#                         35   9   2                               #
+#                                                                  #
+#//////////////////////////////////////////////////////////////////#
+#                                                                  #
+#                         button                                   #
+#                                                                  #
+#                          |  |                                    #
+#                       +--------+                                 #
+#                       |*      *|                                 #
+#                       |   @@   |                                 #
+#                       |   @@   |                                 #
+#                       |*      *|                                 #
+#                       +--------+                                 #
+#                          |  |                                    #
+#                         39 37                                    #
+#                                                                  #
+#//////////////////////////////////////////////////////////////////#
+#                                                                  #
+#                         led_R                                    #
+#                         led_L                                    #
+#                                                                  #
+#                           -                                      #
+#                         +   +                                    #
+#                        |     |                                   #
+#                        |     |                                   #
+#                        |     |                                   #
+#                        |+   -|                                   #
+#                        +-----+                                   #
+#                         |   |                                    #
+#                         |                                        #
+#                      R  9  25                                    #
+#                      L 10  25                                    #
+#                                                                  #
+####################################################################
 #Using SMA420564
 import RPi.GPIO as GPIO
 import time
@@ -47,18 +120,22 @@ num = {' ':(0,0,0,0,0,0,0),
     '9':(1,1,1,1,0,1,1)}
 import threading
 score='0000'
+outnumber=0
 def segmentsrun(): 
     global score
     global segments
     global digits
     global num
-    
+    global outnumber
     while(1):
         if GPIO.input(BUTTON_PIN) == GPIO.LOW:
             score='0000'
             step=0
             goback=0
+            startside=0
             print('reset')
+            GPIO.output(LED_PIN_L,False)
+            GPIO.output(LED_PIN_R,False)
         for digit in range(4):
             for loop in range(0,7):
                 GPIO.output(segments[loop], num[score[digit]][loop])
@@ -69,7 +146,10 @@ def segmentsrun():
             GPIO.output(digits[digit], 0)
             time.sleep(0.001)
             GPIO.output(digits[digit], 1)
+        if(outnumber==1):
+            break
     GPIO.cleanup()
+        
 
 
 #sw420
@@ -83,16 +163,16 @@ def my_callback(channel):
     global step_time
     if(channel==5):
         SW420_number=1
-        print("right move")
+        print("right move"+"  "+str(step)+"  "+str(startside))
     elif(channel==6):
         SW420_number=-1
-        print("left move")
+        print("left move"+"  "+str(step)+"  "+str(startside))
     if(step_time==0):
         score_calculate()
 GPIO.setup(SW420_PIN1, GPIO.IN)
 GPIO.setup(SW420_PIN2, GPIO.IN)
-GPIO.add_event_detect(SW420_PIN1, GPIO.RISING, callback=my_callback, bouncetime=250)
-GPIO.add_event_detect(SW420_PIN2, GPIO.RISING, callback=my_callback, bouncetime=250)
+#GPIO.add_event_detect(SW420_PIN1, GPIO.RISING, callback=my_callback, bouncetime=100)
+#GPIO.add_event_detect(SW420_PIN2, GPIO.RISING, callback=my_callback, bouncetime=100)
 
 #score
 step=0
@@ -101,6 +181,7 @@ goback=0
 start_time=0
 step_over_time=0
 step_time=0
+who_side=0
 def score_calculate():
     global score
     global step
@@ -110,156 +191,300 @@ def score_calculate():
     global start_time
     global step_over_time
     global step_time
+    global who_side
     if(step==0):
         if(startside==0):
             #GPIO.output(LED_PIN_R,True)
             if(SW420_number<0):
-                startside=1
+                who_side+=1
+                if(who_side==2):
+                    startside=1
+                    who_side=0
+
                 SW420_number=0
                 score=str(int(score)+100).zfill(4)  
                 step=0
                 step_over_time=time.time()
                 GPIO.output(LED_PIN_R,False)
+                GPIO.output(LED_PIN_L,False)
+                goback=0
             else:
                 step+=1
                 goback=1
                 start_time=time.time()
+                print("step0: "+str(start_time))
         else:
             #GPIO.output(LED_PIN_L,True)
             if(SW420_number>0):
-                startside=0
+                who_side+=1
+                if(who_side==2):
+                    startside=0
+                    who_side=0
                 SW420_number=0
                 score=str(int(score)+1).zfill(4)
                 step=0
                 step_over_time=time.time()
                 GPIO.output(LED_PIN_L,False)
+                GPIO.output(LED_PIN_R,False)
+                goback=0
             else:
                 step+=1
                 goback=1
                 start_time=time.time()
-        
+                print("step0: "+str(start_time))
     elif(step==1):
         if(startside==0):
             if(SW420_number>0):
-                startside=1
+                who_side+=1
+                if(who_side==2):
+                    startside=1
+                    who_side=0
                 SW420_number=0
                 score=str(int(score)+100).zfill(4)
                 step=0
                 step_over_time=time.time()
                 GPIO.output(LED_PIN_L,False)
                 GPIO.output(LED_PIN_R,False)
+                goback=0
             else:
                 step+=1
                 goback=1
                 start_time=time.time()
+                print("step1: "+str(start_time))
         else:
             if(SW420_number<0):
-                startside=0
+                who_side+=1
+                if(who_side==2):
+                    startside=0
+                    who_side=0
                 SW420_number=0
                 score=str(int(score)+1).zfill(4)
                 step=0
                 step_over_time=time.time()
                 GPIO.output(LED_PIN_L,False)
                 GPIO.output(LED_PIN_R,False)
+                goback=0
             else:
                 step+=1
                 goback=1
                 start_time=time.time()
+                print("step1: "+str(start_time))
     elif(step==2):
         if(startside==0):
             if(SW420_number<0):
-                startside=0
+                who_side+=1
+                if(who_side==2):
+                    startside=1
+                    who_side=0
                 SW420_number=0
                 score=str(int(score)+1).zfill(4)
                 step=0
                 step_over_time=time.time()
                 GPIO.output(LED_PIN_L,False)
                 GPIO.output(LED_PIN_R,False)
+                goback=0
+                
             else:
                 step+=1
                 goback=1
                 start_time=time.time()
+                print("step2: "+str(start_time))
         else:
             if(SW420_number>0):
-                startside=1
+                who_side+=1
+                if(who_side==2):
+                    startside=0
+                    who_side=0
                 SW420_number=0
                 score=str(int(score)+100).zfill(4)
                 step=0
                 step_over_time=time.time()
                 GPIO.output(LED_PIN_L,False)
                 GPIO.output(LED_PIN_R,False)
+                goback=0
             else:
                 step+=1
                 goback=1
                 start_time=time.time()
+                print("step1: "+str(start_time))
     else:
         if(startside==0):
             if(SW420_number>0):
-                startside=1
+                who_side+=1
+                if(who_side==2):
+                    startside=1
+                    who_side=0
                 SW420_number=0
                 score=str(int(score)+100).zfill(4)
                 step=0
                 step_over_time=time.time()
                 GPIO.output(LED_PIN_L,False)
                 GPIO.output(LED_PIN_R,False)
+                goback=0
             else:
                 step=2
                 goback=1
                 start_time=time.time()
+                print("step3: "+str(start_time))
         else:
             if(SW420_number<0):
-                startside=0
+                who_side+=1
+                if(who_side==2):
+                    startside=0
+                    who_side=0
                 SW420_number=0
                 score=str(int(score)+1).zfill(4)
                 step=0
                 step_over_time=time.time()
                 GPIO.output(LED_PIN_L,False)
                 GPIO.output(LED_PIN_R,False)
+                goback=0
             else:
                 step=2
                 goback=1
                 start_time=time.time()
-
+                print("step3: "+str(start_time))
+def testfunction():
+    global SW420_number,step,who_side,startside
+    SW420_number=1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    SW420_number=-1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    SW420_number=-1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    print("0:1")
+    print(score)
+    time.sleep(6)
+    print("$$$$"+str(time.time()))
+    SW420_number=1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    SW420_number=1
+    score_calculate()
+    print("****"+str(time.time()))
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    print("1:1")
+    print(score)
+    time.sleep(6)
+    SW420_number=-1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    SW420_number=-1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    print("1:2")
+    print(score)
+    time.sleep(6)
+    SW420_number=-1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    SW420_number=1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    SW420_number=-1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    SW420_number=1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    SW420_number=1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    print("2:2")
+    print(score)
+    time.sleep(6)
+    SW420_number=-1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(0.5)
+    print("3:2")
+    print(score)
+    time.sleep(6)
+    SW420_number=1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(5)
+    print("4:2")
+    print(score)
+    time.sleep(6)
+    SW420_number=-1
+    score_calculate()
+    print("step:"+str(step)+"  startside:"+str(startside)+"  whoside:"+str(who_side))
+    time.sleep(5)
+    print("4:3")
+    print(score)
+    time.sleep(6)
 try:
-    global score
-    global startside
-    global goback
-    global start_time
-    global step_over_time
-    global step_time
     start_time=time.time()
     t = threading.Thread(target =segmentsrun)        
     t.start()
-
+    test = threading.Thread(target =testfunction)
+    test.start()
     print(' Ctrl-C to stop')
     while(1):
         time_pass=0
         start_time=time.time()
         step_pass=0
+        GPIO.output(LED_PIN_R,True)
         while(1):
-            time_pass=time.time()-start_time
-            step_pass=time.time()-step_over_time
+            time.sleep(0.1)
+            time_now=time.time()
+            #time_pass=time.time()-start_time
+            step_pass=time_now-step_over_time
             if(step_pass>=5):
                 step_time=0
                 if(startside==0):
                     GPIO.output(LED_PIN_R,True)
+                    GPIO.output(LED_PIN_L,False)
                 else:
                     GPIO.output(LED_PIN_L,True)
+                    GPIO.output(LED_PIN_R,False)
             else:
                 step_time=1
+            
+            time_pass=time_now-start_time
             if(goback==1 and time_pass>=5):
-                #print(start_time)
+                print("---"+str(time.time()))
+                print(time_pass)
+                print("!!"+str(start_time))
+                print("///"+str(time_now))
                 if(startside==0):
                     score=str(int(score)+100).zfill(4)
+                    who_side+=1
+                    if(who_side==2):
+                        startside=1
+                        who_side=0
+                    step=0
                 else:
                     score=str(int(score)+1).zfill(4)
+                    who_side+=1
+                    if(who_side==2):
+                        startside=0
+                        who_side=0
+                    step=0
                 goback=0
+                time_pass=0
+                step_over_time=time.time()
+                GPIO.output(LED_PIN_L,False)
+                GPIO.output(LED_PIN_R,False)
                 #break
-                
-        #if(time.time()-starttime>=5):
-        #    n='2020'   
-        #score=str(person[0])+str(person[1])    
 except KeyboardInterrupt:
+    outnumber=1
     print('close')
+    
 #finally:
 #    GPIO.cleanup()
