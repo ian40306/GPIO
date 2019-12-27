@@ -127,12 +127,16 @@ def segmentsrun():
     global digits
     global num
     global outnumber
+    global startside
+    global who_side
+    global step
     while(1):
         if GPIO.input(BUTTON_PIN) == GPIO.LOW:
             score='0000'
             step=0
             goback=0
             startside=0
+            who_side=0
             print('reset')
             GPIO.output(LED_PIN_L,False)
             GPIO.output(LED_PIN_R,False)
@@ -146,6 +150,7 @@ def segmentsrun():
             GPIO.output(digits[digit], 0)
             time.sleep(0.001)
             GPIO.output(digits[digit], 1)
+        
         if(outnumber==1):
             break
     GPIO.cleanup()
@@ -153,10 +158,11 @@ def segmentsrun():
 
 
 #sw420
-SW420_PIN1 = 5#29
-SW420_PIN2 = 6#31
-SW420_PIN3 = 13#33
-SW420_PIN4 = 19#35
+SW420_PIN1 = 5#29 5
+
+SW420_PIN2 = 6#31 6
+SW420_PIN3 = 13#33 13
+SW420_PIN4 = 19#35 19
 SW420_number=0
 def my_callback(channel):
     global SW420_number
@@ -171,8 +177,8 @@ def my_callback(channel):
         score_calculate()
 GPIO.setup(SW420_PIN1, GPIO.IN)
 GPIO.setup(SW420_PIN2, GPIO.IN)
-#GPIO.add_event_detect(SW420_PIN1, GPIO.RISING, callback=my_callback, bouncetime=100)
-#GPIO.add_event_detect(SW420_PIN2, GPIO.RISING, callback=my_callback, bouncetime=100)
+GPIO.add_event_detect(SW420_PIN1, GPIO.RISING, callback=my_callback, bouncetime=250)
+GPIO.add_event_detect(SW420_PIN2, GPIO.RISING, callback=my_callback, bouncetime=250)
 
 #score
 step=0
@@ -432,8 +438,8 @@ try:
     start_time=time.time()
     t = threading.Thread(target =segmentsrun)        
     t.start()
-    test = threading.Thread(target =testfunction)
-    test.start()
+    #test = threading.Thread(target =testfunction)
+    #test.start()
     print(' Ctrl-C to stop')
     while(1):
         time_pass=0
@@ -458,19 +464,25 @@ try:
             
             time_pass=time_now-start_time
             if(goback==1 and time_pass>=5):
-                print("---"+str(time.time()))
+                print("now"+str(time.time()))
                 print(time_pass)
-                print("!!"+str(start_time))
-                print("///"+str(time_now))
+                print("start_time"+str(start_time))
+                print("timw_now"+str(time_now))
                 if(startside==0):
-                    score=str(int(score)+100).zfill(4)
+                    if(step==2):
+                        score=str(int(score)+1).zfill(4)
+                    else:
+                        score=str(int(score)+100).zfill(4)
                     who_side+=1
                     if(who_side==2):
                         startside=1
                         who_side=0
                     step=0
                 else:
-                    score=str(int(score)+1).zfill(4)
+                    if(step==2):
+                        score=str(int(score)+100).zfill(4)
+                    else:
+                        score=str(int(score)+1).zfill(4)
                     who_side+=1
                     if(who_side==2):
                         startside=0
